@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rust-worker
+  namespace: retro-filter
+  labels:
+    app: retro-filter
+    component: rust-worker
+    version: "0.1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: retro-filter
+      component: rust-worker
+  template:
+    metadata:
+      labels:
+        app: retro-filter
+        component: rust-worker
+        version: "0.1.0"
+    spec:
+      containers:
+        - name: rust-worker
+          image: retro-filter/rust-worker:0.1.0
+          env:
+            - name: REDIS_ADDR
+              value: "redis:6379"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command: ["true"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["true"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
