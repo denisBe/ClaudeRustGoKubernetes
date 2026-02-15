@@ -1,5 +1,8 @@
 # Retro Image Filter Service
 
+[![CI](https://github.com/denisBe/ClaudeRustGoKubernetes/actions/workflows/ci.yml/badge.svg)](https://github.com/denisBe/ClaudeRustGoKubernetes/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/denisBe/ClaudeRustGoKubernetes/graph/badge.svg)](https://codecov.io/gh/denisBe/ClaudeRustGoKubernetes)
+
 A microservices-based image processing pipeline for learning Go, Rust, and Kubernetes. See [PROJECT.md](PROJECT.md) for full architecture and API details.
 
 ## Prerequisites
