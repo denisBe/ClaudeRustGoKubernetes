@@ -1,7 +1,7 @@
 # Session 6 — Developer Setup Guide & Scripts
 
 **Date:** 2026-02-14
-**Commit:** 03b5bda
+**Commit:** ba03c5c
 
 ## Summary
 
@@ -30,24 +30,4 @@ Created developer onboarding documentation and automated setup scripts, plus upd
 
 ## Full Transcript
 
-### User
-Implement the plan for Developer Setup Guide & Scripts (SETUP.md, scripts/setup-windows.ps1, scripts/setup-linux.sh, update README.md).
-
-### Claude
-Read existing files (README.md, QUALITY.md, docker-compose.yml, k8s manifests) for context. Created all four files in parallel:
-- SETUP.md with full install guide
-- scripts/setup-windows.ps1 (PowerShell, Chocolatey-based)
-- scripts/setup-linux.sh (Bash, Debian/Fedora detection)
-- Updated README.md (docker compose v2 fix, SETUP.md link, project structure)
-
-### User
-Can you also update .gitignore file for temporary rust and golang files?
-
-### Claude
-Updated .gitignore with Go build artifacts (*.exe, *.test, *.out, go-api binary), Rust target directory, and OS files (.DS_Store, Thumbs.db).
-
-### User
-Commit this.
-
-### Claude
-Committed as 03b5bda: "Add developer setup guide and automated install scripts"
+This session is part of the same conversation as Session 7. See [session-007.md](./session-007.md) for the full transcript covering both sessions.
