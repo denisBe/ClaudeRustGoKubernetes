@@ -4,8 +4,10 @@
 # Go
 go-service/go-api
 *.exe
+*.exe*
 *.test
 *.out
+__debug_bin*
 
 # Rust
 rust-service/target/
