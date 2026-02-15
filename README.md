@@ -9,10 +9,12 @@ A microservices-based image processing pipeline for learning Go, Rust, and Kuber
 - [Go 1.22+](https://go.dev/dl/)
 - [Rust / Cargo](https://rustup.rs/)
 
+See [SETUP.md](SETUP.md) for detailed installation instructions and automated setup scripts.
+
 ## Local Development (Docker Compose)
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 This starts:
@@ -54,9 +56,13 @@ minikube service go-api -n retro-filter
 │   ├── go-service.yaml
 │   ├── rust-deployment.yaml
 │   └── rust-hpa.yaml
+├── scripts/             # Automated setup scripts
+│   ├── setup-windows.ps1
+│   └── setup-linux.sh
 ├── docker-compose.yml
 ├── PROJECT.md           # Architecture and API design
 ├── QUALITY.md           # Testing, linting, and CI standards
+├── SETUP.md             # Developer setup guide
 └── CLAUDE.md            # Claude Code interaction rules
 ```
 

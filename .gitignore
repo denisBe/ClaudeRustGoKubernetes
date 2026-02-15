@@ -1,1 +1,16 @@
+# Claude Code
 .claude/*
+
+# Go
+go-service/go-api
+*.exe
+*.test
+*.out
+
+# Rust
+rust-service/target/
+Cargo.lock
+
+# OS
+.DS_Store
+Thumbs.db
