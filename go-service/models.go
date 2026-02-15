@@ -12,5 +12,8 @@ type StatusResponse struct {
 func returnStatus(w http.ResponseWriter, status StatusResponse) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(status)
+	err := json.NewEncoder(w).Encode(status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
