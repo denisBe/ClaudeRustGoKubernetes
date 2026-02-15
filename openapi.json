@@ -1,0 +1,173 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Retro Image Filter Service",
+    "description": "Async image processing API — upload a PNG, get a grayscale version back.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8081",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Health check",
+        "description": "Returns service health status. Used by Kubernetes liveness probe.",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "post": {
+        "summary": "Submit image for processing",
+        "description": "Upload a PNG image to be processed with the grayscale filter. Returns a job ID for polling.",
+        "operationId": "createJob",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Job created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (not a PNG, missing body, etc.)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{id}": {
+      "get": {
+        "summary": "Get job status",
+        "description": "Poll for the status of a processing job. When completed, the response includes the result image.",
+        "operationId": "getJob",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Job ID returned by POST /jobs"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Job not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StatusResponse": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "Healthy"
+          }
+        }
+      },
+      "JobCreatedResponse": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      },
+      "JobStatusResponse": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "processing", "completed", "failed"],
+            "example": "completed"
+          },
+          "result_url": {
+            "type": "string",
+            "description": "URL to download the processed image. Only present when status is completed.",
+            "example": "/jobs/550e8400-e29b-41d4-a716-446655440000/result"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message. Only present when status is failed."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "job not found"
+          }
+        }
+      }
+    }
+  }
+}
