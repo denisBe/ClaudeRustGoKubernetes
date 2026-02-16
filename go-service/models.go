@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 type StatusResponse struct {
@@ -16,4 +19,9 @@ func returnStatus(w http.ResponseWriter, status StatusResponse) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func keepImport() {
+	id := uuid.New()
+	fmt.Println("Generated UUID:", id.String())
 }
