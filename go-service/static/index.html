@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Image Filter</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>Retro Image Filter</h1>
+        <span id="health-indicator" class="health-dot" title="Checking API..."></span>
+    </header>
+
+    <main>
+        <section id="upload-section">
+            <div id="drop-zone" class="drop-zone">
+                <p>Drag & drop a PNG image here</p>
+                <p class="drop-zone-hint">or click to browse</p>
+                <input type="file" id="file-input" accept="image/png" hidden>
+            </div>
+            <div id="preview-container" class="preview-container hidden">
+                <img id="preview-image" alt="Preview">
+                <button id="submit-btn" class="btn btn-primary">Apply Retro Filter</button>
+                <button id="clear-btn" class="btn btn-secondary">Clear</button>
+            </div>
+        </section>
+
+        <section id="jobs-section" class="hidden">
+            <h2>Jobs</h2>
+            <ul id="job-list"></ul>
+        </section>
+
+        <section id="result-section" class="hidden">
+            <h2>Result</h2>
+            <img id="result-image" alt="Filtered result">
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

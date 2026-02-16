@@ -63,24 +63,39 @@ fi
 
 # --- Go ---
 step "Installing Go"
-GO_VERSION="1.22.5"
-if command_exists go; then
-    skip "Go already installed: $(go version)"
-else
+GO_VERSION="1.26.0"
+install_go() {
     rm -f /tmp/go.tar.gz
     wget -q "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.tar.gz
     rm -rf /usr/local/go
     tar -C /usr/local -xzf /tmp/go.tar.gz
     rm /tmp/go.tar.gz
+}
 
-    # Add to PATH for the installing user
-    PROFILE_FILE="/home/${SUDO_USER:-$USER}/.bashrc"
-    if ! grep -q '/usr/local/go/bin' "$PROFILE_FILE" 2>/dev/null; then
-        echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> "$PROFILE_FILE"
+if [ -x /usr/local/go/bin/go ]; then
+    CURRENT_GO=$(/usr/local/go/bin/go version | grep -oP 'go\K[0-9]+\.[0-9]+(\.[0-9]+)?')
+    if printf '%s\n%s\n' "$GO_VERSION" "$CURRENT_GO" | sort -V | head -1 | grep -qx "$GO_VERSION"; then
+        skip "Go already up to date: go$CURRENT_GO"
+    else
+        echo "    Go $CURRENT_GO found, upgrading to $GO_VERSION..."
+        install_go
+        ok "Go upgraded from $CURRENT_GO to $GO_VERSION"
     fi
-    export PATH=$PATH:/usr/local/go/bin
+else
+    install_go
     ok "Go $GO_VERSION installed"
 fi
+
+# Ensure Go is on PATH for the installing user (both .bashrc and .profile)
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME="/home/$REAL_USER"
+for rcfile in "$REAL_HOME/.bashrc" "$REAL_HOME/.profile"; do
+    if ! grep -q '/usr/local/go/bin' "$rcfile" 2>/dev/null; then
+        echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> "$rcfile"
+        ok "Added Go to PATH in $(basename "$rcfile")"
+    fi
+done
+export PATH=$PATH:/usr/local/go/bin
 
 # --- Rust ---
 step "Installing Rust"
@@ -147,9 +162,15 @@ ok "Manifests applied"
 # --- Verification ---
 step "Verification"
 echo ""
+# Run verification as the real user so tools in ~/.cargo/bin, ~/go/bin, etc. are found
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME="/home/$REAL_USER"
+USER_PATH="/usr/local/go/bin:$REAL_HOME/go/bin:$REAL_HOME/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 verify() {
     local name="$1"; shift
-    if output=$("$@" 2>&1 | head -1); then
+    if full_output=$(sudo -u "$REAL_USER" env "PATH=$USER_PATH" "HOME=$REAL_HOME" "$@" 2>&1); then
+        output=$(echo "$full_output" | head -1)
         ok "$name: $output"
     else
         fail "$name: not found"
