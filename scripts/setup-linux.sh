@@ -7,6 +7,12 @@
 
 set -euo pipefail
 
+# --- Root check ---
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run with sudo: sudo $0" >&2
+    exit 1
+fi
+
 # --- Helpers ---
 step()  { echo -e "\n\033[36m==> $1\033[0m"; }
 ok()    { echo -e "    \033[32m[OK]\033[0m $1"; }
@@ -61,6 +67,7 @@ GO_VERSION="1.22.5"
 if command_exists go; then
     skip "Go already installed: $(go version)"
 else
+    rm -f /tmp/go.tar.gz
     wget -q "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.tar.gz
     rm -rf /usr/local/go
     tar -C /usr/local -xzf /tmp/go.tar.gz
@@ -128,6 +135,7 @@ ok "Docker images built"
 
 # --- Minikube (run as real user) ---
 step "Starting minikube"
+sudo -u "${SUDO_USER:-$USER}" minikube delete 2>/dev/null || true
 sudo -u "${SUDO_USER:-$USER}" minikube start
 ok "minikube started"
 
