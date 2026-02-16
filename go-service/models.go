@@ -1,27 +1,10 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-
-	"github.com/google/uuid"
 )
 
-type StatusResponse struct {
-	Status string `json:"status"`
-}
-
-func returnStatus(w http.ResponseWriter, status StatusResponse) {
+func setHeader(w http.ResponseWriter, code int) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	err := json.NewEncoder(w).Encode(status)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func keepImport() {
-	id := uuid.New()
-	fmt.Println("Generated UUID:", id.String())
+	w.WriteHeader(code)
 }

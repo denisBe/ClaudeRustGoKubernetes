@@ -19,14 +19,7 @@
         "operationId": "getHealth",
         "responses": {
           "200": {
-            "description": "Service is healthy",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StatusResponse"
-                }
-              }
-            }
+            "description": "Service is healthy (no body, status code only)"
           }
         }
       }
@@ -39,10 +32,23 @@
         "requestBody": {
           "required": true,
           "content": {
-            "image/png": {
+            "multipart/form-data": {
               "schema": {
-                "type": "string",
-                "format": "binary"
+                "type": "object",
+                "required": ["image", "filter"],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "PNG image file to process"
+                  },
+                  "filter": {
+                    "type": "string",
+                    "enum": ["grayscale", "sepia"],
+                    "description": "Retro filter to apply",
+                    "example": "grayscale"
+                  }
+                }
               }
             }
           }
@@ -114,16 +120,6 @@
   },
   "components": {
     "schemas": {
-      "StatusResponse": {
-        "type": "object",
-        "required": ["status"],
-        "properties": {
-          "status": {
-            "type": "string",
-            "example": "Healthy"
-          }
-        }
-      },
       "JobCreatedResponse": {
         "type": "object",
         "required": ["id"],

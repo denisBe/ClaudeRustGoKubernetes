@@ -21,7 +21,14 @@
             </div>
             <div id="preview-container" class="preview-container hidden">
                 <img id="preview-image" alt="Preview">
-                <button id="submit-btn" class="btn btn-primary">Apply Retro Filter</button>
+                <div class="filter-select">
+                    <label for="filter">Filter:</label>
+                    <select id="filter">
+                        <option value="grayscale">Grayscale</option>
+                        <option value="sepia">Sepia</option>
+                    </select>
+                </div>
+                <button id="submit-btn" class="btn btn-primary">Apply Filter</button>
                 <button id="clear-btn" class="btn btn-secondary">Clear</button>
             </div>
         </section>

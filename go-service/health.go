@@ -8,5 +8,5 @@ import (
 func handleGetHealth(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Received GET health")
 
-	returnStatus(w, StatusResponse{Status: "Healthy"})
+	setHeader(w, http.StatusOK)
 }

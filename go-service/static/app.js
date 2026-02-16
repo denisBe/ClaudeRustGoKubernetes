@@ -13,6 +13,7 @@
     const resultSection = document.getElementById("result-section");
     const resultImage = document.getElementById("result-image");
     const healthDot = document.getElementById("health-indicator");
+    const filterSelect = document.getElementById("filter");
 
     let selectedFile = null;
     const activePolls = new Map(); // jobId -> intervalId
@@ -88,6 +89,7 @@
         try {
             const formData = new FormData();
             formData.append("image", selectedFile);
+            formData.append("filter", filterSelect.value);
 
             const res = await fetch("/jobs", { method: "POST", body: formData });
             const data = await res.json();

@@ -91,6 +91,30 @@ main {
     border: 1px solid #333;
 }
 
+/* Filter select */
+.filter-select {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.filter-select label {
+    font-size: 0.95rem;
+    color: #ccc;
+}
+
+.filter-select select {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #16213e;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
 /* Buttons */
 .btn {
     margin-top: 12px;

@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -21,12 +23,45 @@ var validPNG = []byte{
 	0x44, 0xae, 0x42, 0x60, 0x82,
 }
 
-func TestPostJob_ValidPNG_Returns201(t *testing.T) {
+// createMultipartRequest builds a multipart/form-data request with an image part and a filter part.
+func createMultipartRequest(t *testing.T, png []byte, filter string) *http.Request {
+	t.Helper()
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+
+	if png != nil {
+		part, err := w.CreateFormFile("image", "test.png")
+		if err != nil {
+			t.Fatalf("failed to create image part: %s", err)
+		}
+		_, err = io.Copy(part, bytes.NewReader(png))
+		if err != nil {
+			t.Fatalf("failed to write image part: %s", err)
+		}
+	}
+
+	if filter != "" {
+		err := w.WriteField("filter", filter)
+		if err != nil {
+			t.Fatalf("failed to write filter field: %s", err)
+		}
+	}
+
+	err := w.Close()
+	if err != nil {
+		t.Fatalf("failed to close multipart writer: %s", err)
+	}
+
+	req := httptest.NewRequest("POST", "/jobs", &buf)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	return req
+}
+
+func TestPostJob_ValidRequest_Returns201(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", handlePostJob)
 
-	req := httptest.NewRequest("POST", "/jobs", bytes.NewReader(validPNG))
-	req.Header.Set("Content-Type", "image/png")
+	req := createMultipartRequest(t, validPNG, "grayscale")
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -36,12 +71,11 @@ func TestPostJob_ValidPNG_Returns201(t *testing.T) {
 	}
 }
 
-func TestPostJob_ValidPNG_ReturnsJobID(t *testing.T) {
+func TestPostJob_ValidRequest_ReturnsJobID(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", handlePostJob)
 
-	req := httptest.NewRequest("POST", "/jobs", bytes.NewReader(validPNG))
-	req.Header.Set("Content-Type", "image/png")
+	req := createMultipartRequest(t, validPNG, "sepia")
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -58,12 +92,11 @@ func TestPostJob_ValidPNG_ReturnsJobID(t *testing.T) {
 	}
 }
 
-func TestPostJob_ValidPNG_ReturnsJSON(t *testing.T) {
+func TestPostJob_ValidRequest_ReturnsJSON(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", handlePostJob)
 
-	req := httptest.NewRequest("POST", "/jobs", bytes.NewReader(validPNG))
-	req.Header.Set("Content-Type", "image/png")
+	req := createMultipartRequest(t, validPNG, "grayscale")
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -88,13 +121,54 @@ func TestPostJob_EmptyBody_Returns400(t *testing.T) {
 	}
 }
 
+func TestPostJob_MissingImage_Returns400(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /jobs", handlePostJob)
+
+	req := createMultipartRequest(t, nil, "grayscale")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestPostJob_MissingFilter_Returns400(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /jobs", handlePostJob)
+
+	req := createMultipartRequest(t, validPNG, "")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", rec.Code)
+	}
+}
+
+func TestPostJob_InvalidFilter_Returns400(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /jobs", handlePostJob)
+
+	req := createMultipartRequest(t, validPNG, "vaporwave")
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", rec.Code)
+	}
+}
+
 func TestPostJob_NotPNG_Returns400(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", handlePostJob)
 
-	body := []byte("this is not a PNG file")
-	req := httptest.NewRequest("POST", "/jobs", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "text/plain")
+	notPNG := []byte("this is not a PNG file")
+	req := createMultipartRequest(t, notPNG, "grayscale")
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -110,8 +184,7 @@ func TestPostJob_UniqueJobIDs(t *testing.T) {
 
 	ids := make(map[string]bool)
 	for i := 0; i < 10; i++ {
-		req := httptest.NewRequest("POST", "/jobs", bytes.NewReader(validPNG))
-		req.Header.Set("Content-Type", "image/png")
+		req := createMultipartRequest(t, validPNG, "grayscale")
 		rec := httptest.NewRecorder()
 
 		mux.ServeHTTP(rec, req)
