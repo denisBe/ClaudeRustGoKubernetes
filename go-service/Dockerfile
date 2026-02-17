@@ -15,6 +15,6 @@ RUN apk --no-cache add ca-certificates
 
 COPY --from=builder /go-api /go-api
 
-EXPOSE 8080
+EXPOSE 8081
 
 ENTRYPOINT ["/go-api"]

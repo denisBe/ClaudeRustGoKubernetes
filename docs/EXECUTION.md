@@ -55,7 +55,7 @@ docker compose up --build
 
 | Service | URL |
 |---------|-----|
-| Go API + Frontend | http://localhost:8080 |
+| Go API + Frontend | http://localhost:8081 |
 | Redis | localhost:6379 |
 
 To run in the background:
@@ -76,9 +76,7 @@ To rebuild a single service:
 docker compose up --build go-api
 ```
 
-### Port note
-
-The Docker Compose setup maps container port 8080 to host port 8080. When running directly with `go run .`, the server listens on port 8081 instead.
+All methods use port 8081 consistently.
 
 ---
 
@@ -91,10 +89,10 @@ Useful for testing the Docker image in isolation.
 docker build -t retro-filter/go-api:dev ./go-service
 
 # Run
-docker run --rm -p 8080:8080 retro-filter/go-api:dev
+docker run --rm -p 8081:8081 retro-filter/go-api:dev
 ```
 
-Access at **http://localhost:8080**.
+Access at **http://localhost:8081**.
 
 For the Rust worker:
 
@@ -211,7 +209,7 @@ minikube stop
 | Method | Command | URL | Use case |
 |--------|---------|-----|----------|
 | Go directly | `cd go-service && go run .` | http://localhost:8081 | Fast API iteration |
-| Docker Compose | `docker compose up --build` | http://localhost:8080 | Full stack, integration testing |
-| Single container | `docker run -p 8080:8080 ...` | http://localhost:8080 | Test Docker image |
+| Docker Compose | `docker compose up --build` | http://localhost:8081 | Full stack, integration testing |
+| Single container | `docker run -p 8081:8081 ...` | http://localhost:8081 | Test Docker image |
 | VS Code | F5 or Ctrl+F5 | http://localhost:8081 | Debug with breakpoints |
 | Kubernetes | `kubectl apply -f k8s/` | `minikube service ...` | Production-like deployment |

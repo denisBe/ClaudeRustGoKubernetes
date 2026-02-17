@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type JobCreatedResponse struct {
@@ -26,7 +27,11 @@ var validFilters = map[string]bool{
 	FilterSepia:     false,
 }
 
-func handlePostJob(w http.ResponseWriter, r *http.Request) {
+type JobsContext struct {
+	redisClient *redis.Client
+}
+
+func (jc *JobsContext) handlePostJob(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Received POST job")
 
 	img, header, err := r.FormFile("image")
@@ -72,7 +77,7 @@ func handlePostJob(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseBody.Bytes())
 }
 
-func handleGetJobs(w http.ResponseWriter, r *http.Request) {
+func (jc *JobsContext) handleGetJobs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Received GET job")
 
 	setHeader(w, http.StatusNotImplemented)

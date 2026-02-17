@@ -23,6 +23,12 @@ var validPNG = []byte{
 	0x44, 0xae, 0x42, 0x60, 0x82,
 }
 
+// newTestJobsContext creates a JobsContext with no Redis client (nil).
+// Sufficient for tests that only exercise validation logic.
+func newTestJobsContext() *JobsContext {
+	return &JobsContext{redisClient: nil}
+}
+
 // createMultipartRequest builds a multipart/form-data request with an image part and a filter part.
 func createMultipartRequest(t *testing.T, png []byte, filter string) *http.Request {
 	t.Helper()
@@ -58,8 +64,9 @@ func createMultipartRequest(t *testing.T, png []byte, filter string) *http.Reque
 }
 
 func TestPostJob_ValidRequest_Returns201(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	req := createMultipartRequest(t, validPNG, "grayscale")
 	rec := httptest.NewRecorder()
@@ -72,8 +79,9 @@ func TestPostJob_ValidRequest_Returns201(t *testing.T) {
 }
 
 func TestPostJob_ValidRequest_ReturnsJobID(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	req := createMultipartRequest(t, validPNG, "grayscale")
 	rec := httptest.NewRecorder()
@@ -93,8 +101,9 @@ func TestPostJob_ValidRequest_ReturnsJobID(t *testing.T) {
 }
 
 func TestPostJob_ValidRequest_ReturnsJSON(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	req := createMultipartRequest(t, validPNG, "grayscale")
 	rec := httptest.NewRecorder()
@@ -108,8 +117,9 @@ func TestPostJob_ValidRequest_ReturnsJSON(t *testing.T) {
 }
 
 func TestPostJob_EmptyBody_Returns400(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	req := httptest.NewRequest("POST", "/jobs", nil)
 	rec := httptest.NewRecorder()
@@ -122,8 +132,9 @@ func TestPostJob_EmptyBody_Returns400(t *testing.T) {
 }
 
 func TestPostJob_MissingImage_Returns400(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	req := createMultipartRequest(t, nil, "grayscale")
 	rec := httptest.NewRecorder()
@@ -136,8 +147,9 @@ func TestPostJob_MissingImage_Returns400(t *testing.T) {
 }
 
 func TestPostJob_MissingFilter_Returns400(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	req := createMultipartRequest(t, validPNG, "")
 	rec := httptest.NewRecorder()
@@ -150,8 +162,9 @@ func TestPostJob_MissingFilter_Returns400(t *testing.T) {
 }
 
 func TestPostJob_InvalidFilter_Returns400(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	req := createMultipartRequest(t, validPNG, "vaporwave")
 	rec := httptest.NewRecorder()
@@ -164,8 +177,9 @@ func TestPostJob_InvalidFilter_Returns400(t *testing.T) {
 }
 
 func TestPostJob_NotPNG_Returns400(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	notPNG := []byte("this is not a PNG file")
 	req := createMultipartRequest(t, notPNG, "grayscale")
@@ -179,8 +193,9 @@ func TestPostJob_NotPNG_Returns400(t *testing.T) {
 }
 
 func TestPostJob_UniqueJobIDs(t *testing.T) {
+	jc := newTestJobsContext()
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	ids := make(map[string]bool)
 	for i := 0; i < 10; i++ {

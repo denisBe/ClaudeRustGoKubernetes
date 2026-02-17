@@ -3,12 +3,15 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"github.com/redis/go-redis/v9"
 )
 
-func registerRoutes(mux *http.ServeMux) {
+func registerRoutes(mux *http.ServeMux, redisClient *redis.Client) {
+	jobsContext := &JobsContext{redisClient: redisClient}
 	mux.HandleFunc("GET /healthz", handleGetHealth)
-	mux.HandleFunc("GET /jobs", handleGetJobs)
-	mux.HandleFunc("POST /jobs", handlePostJob)
+	mux.HandleFunc("GET /jobs", jobsContext.handleGetJobs)
+	mux.HandleFunc("POST /jobs", jobsContext.handlePostJob)
 
 	staticFS, err := StaticFS()
 	if err != nil {
