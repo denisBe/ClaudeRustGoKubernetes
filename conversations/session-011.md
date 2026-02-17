@@ -16,6 +16,8 @@ Large session covering: web frontend implementation, setup-linux.sh Go version h
 3. **6283cd0** — Switch POST /jobs to multipart/form-data with filter field
 4. **a0c8c6f** — Denis implements handlePostJob with multipart parsing
 5. **d2a739a** — Redis connection, JobsContext DI, port standardization to 8081
+6. **dc24d58** — Session 11 conversation log
+7. **5834745** — Refactor handlePostJob: extract helpers
 
 ### Details:
 
@@ -30,6 +32,7 @@ Large session covering: web frontend implementation, setup-linux.sh Go version h
 - Denis implemented handlePostJob (Claude reviewed, suggested fixes)
 - Denis connected Go API to Redis with JobsContext dependency injection
 - Standardized port to 8081 across all configs
+- Refactored handlePostJob: extracted extractImage(), extractFilter(), writeJSON() helpers
 
 ## Key decisions
 
@@ -203,3 +206,27 @@ Code looked good, ready to commit.
 > Looks like you forgot to update the conversations again... Can you update it and store this directive in MEMORY.md ?
 
 Updated MEMORY.md with critical reminder to update conversation log on every commit. Created session-011.md.
+
+[Committed dc24d58, pushed]
+
+> handlePostJob function is a bit too big. Do you have suggestion to make it shorter ? Like creating sub-functions
+
+Suggested extracting validatePNG(), validateFilter(), and writeJSON() helpers.
+
+> why only validate the filter and PNG ? Wouldn't it be better if the functions extract the data as well ?
+
+Denis was right — better to have functions that extract + validate together, returning clean data or error.
+
+> Could you do the update ? It's boilerplate
+
+Refactored jobs.go: extracted extractImage(), extractFilter(), writeJSON(). Handler went from ~45 to ~17 lines.
+
+[Tests pass]
+
+> commit and push
+
+[Committed 5834745, pushed]
+
+> man you forgot to update the conversations AGAIN... why do you keep forgetting it ?
+
+Updated session-011.md and SUMMARY.md. Strengthened MEMORY.md reminder.

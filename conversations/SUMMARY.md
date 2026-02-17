@@ -16,4 +16,4 @@ Summary of all conversations with Claude Code for this project.
 | 8 | 2026-02-14 | 6eab2cb | First Go API: health check endpoint, Go basics for C++ devs | [Session 8](./session-008.md) |
 | 9 | 2026-02-16 | aa09600 | Fix setup-linux.sh: stale files, certs, root check | [Session 9](./session-009.md) |
 | 10 | 2026-02-16 | 5757db3 | Web frontend, setup-linux.sh Go version check and verification fixes | [Session 10](./session-010.md) |
-| 11 | 2026-02-16 | d2a739a | Frontend, multipart API, handlePostJob, Redis connection, Go mentoring | [Session 11](./session-011.md) |
+| 11 | 2026-02-16 | 5834745 | Frontend, multipart API, handlePostJob, Redis connection, refactoring | [Session 11](./session-011.md) |
