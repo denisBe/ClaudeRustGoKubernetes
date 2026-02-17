@@ -75,7 +75,7 @@ func TestPostJob_ValidRequest_ReturnsJobID(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", handlePostJob)
 
-	req := createMultipartRequest(t, validPNG, "sepia")
+	req := createMultipartRequest(t, validPNG, "grayscale")
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
