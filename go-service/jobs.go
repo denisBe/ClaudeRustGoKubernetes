@@ -31,50 +31,64 @@ type JobsContext struct {
 	redisClient *redis.Client
 }
 
-func (jc *JobsContext) handlePostJob(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Received POST job")
-
+func extractImage(r *http.Request) ([]byte, string, error) {
 	img, header, err := r.FormFile("image")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return nil, "", fmt.Errorf("missing image: %w", err)
 	}
 	defer img.Close()
 
 	imgBuf, err := io.ReadAll(img)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, "", fmt.Errorf("failed to read image: %w", err)
 	}
 
 	if len(imgBuf) < len(pngMagic) || !bytes.Equal(imgBuf[:len(pngMagic)], pngMagic) {
-		http.Error(w, "File is not a PNG image", http.StatusBadRequest)
-		return
+		return nil, "", fmt.Errorf("file is not a PNG image")
 	}
 
+	return imgBuf, header.Filename, nil
+}
+
+func extractFilter(r *http.Request) (string, error) {
 	filter := r.FormValue("filter")
 	if filter == "" {
-		http.Error(w, "Missing filter parameter", http.StatusBadRequest)
-		return
+		return "", fmt.Errorf("missing filter parameter")
 	}
 	if !validFilters[filter] {
-		http.Error(w, "Invalid filter parameter "+filter, http.StatusBadRequest)
-		return
+		return "", fmt.Errorf("invalid filter: %s", filter)
 	}
+	return filter, nil
+}
 
-	fmt.Printf("Received file: %s for filter %s\n", header.Filename, filter)
-
-	id := uuid.New()
-	var responseBody bytes.Buffer
-	err = json.NewEncoder(&responseBody).Encode(JobCreatedResponse{ID: id.String()})
-	if err != nil {
+func writeJSON(w http.ResponseWriter, code int, v any) {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(responseBody.Bytes())
+	w.WriteHeader(code)
+	buf.WriteTo(w)
+}
+
+func (jc *JobsContext) handlePostJob(w http.ResponseWriter, r *http.Request) {
+	imgBuf, filename, err := extractImage(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	filter, err := extractFilter(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Printf("Received file: %s (%d bytes) for filter %s\n", filename, len(imgBuf), filter)
+
+	id := uuid.New()
+	writeJSON(w, http.StatusCreated, JobCreatedResponse{ID: id.String()})
 }
 
 func (jc *JobsContext) handleGetJobs(w http.ResponseWriter, r *http.Request) {
