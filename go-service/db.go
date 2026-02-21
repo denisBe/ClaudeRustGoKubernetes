@@ -67,11 +67,15 @@ func (db *DbContext) CreateJob(image []byte, filter string) (JobInfo, error) {
 }
 
 func (db *DbContext) GetJobInfo(jobID string) (JobInfo, error) {
-	// Simulated logic to retrieve job info from Redis
-	// In a real app, this would use db.redisClient to retrieve job info
-	return JobInfo{
-		ID:     jobID,
-		Filter: "mock filter",
-		Status: "completed",
-	}, nil
+	ctx := context.Background()
+	val, err := db.redisClient.Get(ctx, "job:"+jobID).Result()
+	if err != nil {
+		return JobInfo{}, err
+	}
+
+	var info JobInfo
+	if err = json.Unmarshal([]byte(val), &info); err != nil {
+		return JobInfo{}, fmt.Errorf("stored job info is not valid JSON: %w", err)
+	}
+	return info, nil
 }

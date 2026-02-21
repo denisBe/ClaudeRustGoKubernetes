@@ -12,6 +12,7 @@ func registerRoutes(mux *http.ServeMux, redisClient *redis.Client) {
 	mux.HandleFunc("GET /healthz", handleGetHealth)
 	mux.HandleFunc("GET /jobs", jobsContext.handleGetJobs)
 	mux.HandleFunc("POST /jobs", jobsContext.handlePostJob)
+	mux.HandleFunc("GET /jobs/{id}", jobsContext.handleGetJob)
 
 	staticFS, err := StaticFS()
 	if err != nil {

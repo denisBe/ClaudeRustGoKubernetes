@@ -36,6 +36,30 @@ func newTestJobsContext(t *testing.T) (*JobsContext, *miniredis.Miniredis) {
 	return &JobsContext{db: &DbContext{redisClient: client}}, mr
 }
 
+// newTestMux registers all job routes on a fresh mux.
+func newTestMux(t *testing.T) (*http.ServeMux, *JobsContext) {
+	t.Helper()
+	jc, _ := newTestJobsContext(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
+	mux.HandleFunc("GET /jobs/{id}", jc.handleGetJob)
+	return mux, jc
+}
+
+// createJob is a test helper that submits a job and returns its ID.
+func createJob(t *testing.T, mux *http.ServeMux) string {
+	t.Helper()
+	req := createMultipartRequest(t, validPNG, FilterGrayscale)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 when creating job, got %d", rec.Code)
+	}
+	var body map[string]string
+	json.NewDecoder(rec.Body).Decode(&body)
+	return body["id"]
+}
+
 // createMultipartRequest builds a multipart/form-data request with an image part and a filter part.
 func createMultipartRequest(t *testing.T, png []byte, filter string) *http.Request {
 	t.Helper()
@@ -320,5 +344,69 @@ func TestPostJob_UniqueJobIDs(t *testing.T) {
 			t.Errorf("duplicate job ID: %s", id)
 		}
 		ids[id] = true
+	}
+}
+
+// --- GET /jobs/{id} tests ---
+
+func TestGetJob_ExistingID_Returns200(t *testing.T) {
+	mux, _ := newTestMux(t)
+	jobID := createJob(t, mux)
+
+	req := httptest.NewRequest("GET", "/jobs/"+jobID, nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rec.Code)
+	}
+}
+
+func TestGetJob_ExistingID_ReturnsJSON(t *testing.T) {
+	mux, _ := newTestMux(t)
+	jobID := createJob(t, mux)
+
+	req := httptest.NewRequest("GET", "/jobs/"+jobID, nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	contentType := rec.Header().Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("expected Content-Type application/json, got %q", contentType)
+	}
+}
+
+func TestGetJob_ExistingID_ReturnsCorrectJobInfo(t *testing.T) {
+	mux, _ := newTestMux(t)
+	jobID := createJob(t, mux)
+
+	req := httptest.NewRequest("GET", "/jobs/"+jobID, nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	var info JobInfo
+	if err := json.NewDecoder(rec.Body).Decode(&info); err != nil {
+		t.Fatalf("response is not valid JSON: %s", err)
+	}
+	if info.ID != jobID {
+		t.Errorf("expected ID %q, got %q", jobID, info.ID)
+	}
+	if info.Filter != FilterGrayscale {
+		t.Errorf("expected filter %q, got %q", FilterGrayscale, info.Filter)
+	}
+	if info.Status != "pending" {
+		t.Errorf("expected status %q, got %q", "pending", info.Status)
+	}
+}
+
+func TestGetJob_NonExistentID_Returns404(t *testing.T) {
+	mux, _ := newTestMux(t)
+
+	req := httptest.NewRequest("GET", "/jobs/does-not-exist", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", rec.Code)
 	}
 }

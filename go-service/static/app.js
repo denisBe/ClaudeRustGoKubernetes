@@ -105,7 +105,7 @@
             console.error("Failed to submit job:", err);
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = "Apply Retro Filter";
+            submitBtn.textContent = "Apply Filter";
         }
     });
 

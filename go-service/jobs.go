@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type JobCreatedResponse struct {
@@ -95,6 +98,23 @@ func (jc *JobsContext) handlePostJob(w http.ResponseWriter, r *http.Request) {
 func (jc *JobsContext) handleGetJobs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Received GET job")
 
-	jobInfo := db.
-		setHeader(w, http.StatusNotImplemented)
+	setHeader(w, http.StatusNotImplemented)
+}
+
+func (jc *JobsContext) handleGetJob(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Received GET job by ID")
+
+	id := r.PathValue("id")
+
+	jobInfo, err := jc.db.GetJobInfo(id)
+	if errors.Is(err, redis.Nil) {
+		http.Error(w, "job not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, jobInfo)
 }

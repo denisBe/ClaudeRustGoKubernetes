@@ -7,7 +7,7 @@ Redis job persistence and queue: added `JobQueueMessage`, fixed `CreateJob` to s
 2026-02-21
 
 ## Commit
-(to be filled)
+ee74e1c
 
 ## What was done
 - Added `JobQueueMessage` struct with `ImageData []byte` (auto base64 in JSON)
