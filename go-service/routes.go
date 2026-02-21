@@ -8,7 +8,7 @@ import (
 )
 
 func registerRoutes(mux *http.ServeMux, redisClient *redis.Client) {
-	jobsContext := &JobsContext{redisClient: redisClient}
+	jobsContext := &JobsContext{db: &DbContext{redisClient: redisClient}}
 	mux.HandleFunc("GET /healthz", handleGetHealth)
 	mux.HandleFunc("GET /jobs", jobsContext.handleGetJobs)
 	mux.HandleFunc("POST /jobs", jobsContext.handlePostJob)

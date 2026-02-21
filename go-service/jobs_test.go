@@ -2,12 +2,17 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 )
 
 // Valid PNG: smallest possible 1x1 pixel PNG file
@@ -23,10 +28,12 @@ var validPNG = []byte{
 	0x44, 0xae, 0x42, 0x60, 0x82,
 }
 
-// newTestJobsContext creates a JobsContext with no Redis client (nil).
-// Sufficient for tests that only exercise validation logic.
-func newTestJobsContext() *JobsContext {
-	return &JobsContext{redisClient: nil}
+// newTestJobsContext creates a JobsContext backed by an in-process miniredis instance.
+func newTestJobsContext(t *testing.T) (*JobsContext, *miniredis.Miniredis) {
+	t.Helper()
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	return &JobsContext{db: &DbContext{redisClient: client}}, mr
 }
 
 // createMultipartRequest builds a multipart/form-data request with an image part and a filter part.
@@ -64,11 +71,11 @@ func createMultipartRequest(t *testing.T, png []byte, filter string) *http.Reque
 }
 
 func TestPostJob_ValidRequest_Returns201(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
-	req := createMultipartRequest(t, validPNG, "grayscale")
+	req := createMultipartRequest(t, validPNG, FilterGrayscale)
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -79,11 +86,11 @@ func TestPostJob_ValidRequest_Returns201(t *testing.T) {
 }
 
 func TestPostJob_ValidRequest_ReturnsJobID(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
-	req := createMultipartRequest(t, validPNG, "grayscale")
+	req := createMultipartRequest(t, validPNG, FilterGrayscale)
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -101,11 +108,11 @@ func TestPostJob_ValidRequest_ReturnsJobID(t *testing.T) {
 }
 
 func TestPostJob_ValidRequest_ReturnsJSON(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
-	req := createMultipartRequest(t, validPNG, "grayscale")
+	req := createMultipartRequest(t, validPNG, FilterGrayscale)
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -116,8 +123,109 @@ func TestPostJob_ValidRequest_ReturnsJSON(t *testing.T) {
 	}
 }
 
+func TestPostJob_JobStatusStoredInRedis(t *testing.T) {
+	jc, mr := newTestJobsContext(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
+
+	req := createMultipartRequest(t, validPNG, FilterGrayscale)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	var body map[string]string
+	json.NewDecoder(rec.Body).Decode(&body)
+	jobID := body["id"]
+
+	val, err := mr.Get("job:" + jobID)
+	if err != nil {
+		t.Fatalf("expected job:%s to exist in Redis, got error: %s", jobID, err)
+	}
+
+	var info JobInfo
+	if err := json.Unmarshal([]byte(val), &info); err != nil {
+		t.Fatalf("stored value is not valid JSON: %s", err)
+	}
+
+	if info.ID != jobID {
+		t.Errorf("expected ID %q, got %q", jobID, info.ID)
+	}
+	if info.Filter != FilterGrayscale {
+		t.Errorf("expected filter %q, got %q", FilterGrayscale, info.Filter)
+	}
+	if info.Status != "pending" {
+		t.Errorf("expected status %q, got %q", "pending", info.Status)
+	}
+}
+
+func TestPostJob_JobPushedToQueue(t *testing.T) {
+	jc, _ := newTestJobsContext(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
+
+	req := createMultipartRequest(t, validPNG, FilterGrayscale)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	var body map[string]string
+	json.NewDecoder(rec.Body).Decode(&body)
+	jobID := body["id"]
+
+	queueLen, err := jc.db.redisClient.LLen(context.Background(), "jobs:queue").Result()
+	if err != nil || queueLen != 1 {
+		t.Fatalf("expected 1 item in jobs:queue, got %d (err: %v)", queueLen, err)
+	}
+
+	raw, err := jc.db.redisClient.LIndex(context.Background(), "jobs:queue", 0).Result()
+	if err != nil {
+		t.Fatalf("failed to read queue message: %s", err)
+	}
+
+	var msg JobQueueMessage
+	if err := json.Unmarshal([]byte(raw), &msg); err != nil {
+		t.Fatalf("queue message is not valid JSON: %s", err)
+	}
+
+	if msg.ID != jobID {
+		t.Errorf("expected queue message ID %q, got %q", jobID, msg.ID)
+	}
+	if msg.Filter != FilterGrayscale {
+		t.Errorf("expected filter %q, got %q", FilterGrayscale, msg.Filter)
+	}
+	if !bytes.Equal(msg.ImageData, validPNG) {
+		t.Errorf("image data in queue does not match uploaded PNG")
+	}
+}
+
+func TestPostJob_QueueMessageImageIsBase64Encoded(t *testing.T) {
+	jc, _ := newTestJobsContext(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /jobs", jc.handlePostJob)
+
+	req := createMultipartRequest(t, validPNG, FilterGrayscale)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	raw, _ := jc.db.redisClient.LIndex(context.Background(), "jobs:queue", 0).Result()
+
+	var rawMsg map[string]interface{}
+	json.Unmarshal([]byte(raw), &rawMsg)
+
+	encoded, ok := rawMsg["image_data"].(string)
+	if !ok {
+		t.Fatal("expected image_data to be a base64 string in JSON")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		t.Fatalf("image_data is not valid base64: %s", err)
+	}
+	if !bytes.Equal(decoded, validPNG) {
+		t.Error("decoded image_data does not match original PNG bytes")
+	}
+}
+
 func TestPostJob_EmptyBody_Returns400(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
@@ -132,11 +240,11 @@ func TestPostJob_EmptyBody_Returns400(t *testing.T) {
 }
 
 func TestPostJob_MissingImage_Returns400(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
-	req := createMultipartRequest(t, nil, "grayscale")
+	req := createMultipartRequest(t, nil, FilterGrayscale)
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -147,7 +255,7 @@ func TestPostJob_MissingImage_Returns400(t *testing.T) {
 }
 
 func TestPostJob_MissingFilter_Returns400(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
@@ -162,7 +270,7 @@ func TestPostJob_MissingFilter_Returns400(t *testing.T) {
 }
 
 func TestPostJob_InvalidFilter_Returns400(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
@@ -177,12 +285,12 @@ func TestPostJob_InvalidFilter_Returns400(t *testing.T) {
 }
 
 func TestPostJob_NotPNG_Returns400(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	notPNG := []byte("this is not a PNG file")
-	req := createMultipartRequest(t, notPNG, "grayscale")
+	req := createMultipartRequest(t, notPNG, FilterGrayscale)
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -193,13 +301,13 @@ func TestPostJob_NotPNG_Returns400(t *testing.T) {
 }
 
 func TestPostJob_UniqueJobIDs(t *testing.T) {
-	jc := newTestJobsContext()
+	jc, _ := newTestJobsContext(t)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", jc.handlePostJob)
 
 	ids := make(map[string]bool)
 	for i := 0; i < 10; i++ {
-		req := createMultipartRequest(t, validPNG, "grayscale")
+		req := createMultipartRequest(t, validPNG, FilterGrayscale)
 		rec := httptest.NewRecorder()
 
 		mux.ServeHTTP(rec, req)

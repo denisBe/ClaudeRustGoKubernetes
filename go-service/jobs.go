@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 )
 
 type JobCreatedResponse struct {
@@ -28,7 +25,7 @@ var validFilters = map[string]bool{
 }
 
 type JobsContext struct {
-	redisClient *redis.Client
+	db *DbContext
 }
 
 func extractImage(r *http.Request) ([]byte, string, error) {
@@ -87,12 +84,17 @@ func (jc *JobsContext) handlePostJob(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Received file: %s (%d bytes) for filter %s\n", filename, len(imgBuf), filter)
 
-	id := uuid.New()
-	writeJSON(w, http.StatusCreated, JobCreatedResponse{ID: id.String()})
+	job, err := jc.db.CreateJob(imgBuf, filter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusCreated, JobCreatedResponse{ID: job.ID})
 }
 
 func (jc *JobsContext) handleGetJobs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Received GET job")
 
-	setHeader(w, http.StatusNotImplemented)
+	jobInfo := db.
+		setHeader(w, http.StatusNotImplemented)
 }

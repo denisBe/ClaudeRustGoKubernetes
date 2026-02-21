@@ -17,3 +17,4 @@ Summary of all conversations with Claude Code for this project.
 | 9 | 2026-02-16 | aa09600 | Fix setup-linux.sh: stale files, certs, root check | [Session 9](./session-009.md) |
 | 10 | 2026-02-16 | 5757db3 | Web frontend, setup-linux.sh Go version check and verification fixes | [Session 10](./session-010.md) |
 | 11 | 2026-02-16 | 5834745 | Frontend, multipart API, handlePostJob, Redis connection, refactoring | [Session 11](./session-011.md) |
+| 12 | 2026-02-21 | (to be filled) | Redis job persistence (Set) and queue (RPush), miniredis tests | [Session 12](./session-012.md) |
